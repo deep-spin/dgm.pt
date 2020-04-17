@@ -6,8 +6,13 @@ from probabll.dgm.bijectors import Bijection
 
 
 class NF(Distribution):
-    
-    def __init__(self, base: Distribution, flow: Bijection, context=None, validate_args=None):
+    def __init__(
+        self,
+        base: Distribution,
+        flow: Bijection,
+        context=None,
+        validate_args=None,
+    ):
         """
         :param shape:
         :param flow:
@@ -16,9 +21,13 @@ class NF(Distribution):
         :param validate_args:
         :param device:
         """
-        super().__init__(batch_shape=base.batch_shape, event_shape=base.event_shape, validate_args=validate_args)
+        super().__init__(
+            batch_shape=base.batch_shape,
+            event_shape=base.event_shape,
+            validate_args=validate_args,
+        )
         self.base = base
-        self.flow = flow  
+        self.flow = flow
         self.base = base
         self.context = context
 
@@ -26,7 +35,7 @@ class NF(Distribution):
         base_sample = self.base.rsample(sample_shape)
         data_sample, djac = self.flow.inverse(base_sample, self.context)
         return base_sample, data_sample, djac
-    
+
     def rsample(self, sample_shape=torch.Size()):
         """Return data samples by sampling from the uniform base and transforming with the inverse rectified flow"""
         _, data_sample, _ = self.nf_rsample(sample_shape=sample_shape)
@@ -47,8 +56,13 @@ class NF(Distribution):
 
 
 class IAF(NF):
-    
-    def __init__(self, base: Distribution, flow: Bijection, context=None, validate_args=None):
+    def __init__(
+        self,
+        base: Distribution,
+        flow: Bijection,
+        context=None,
+        validate_args=None,
+    ):
         """
         :param shape:
         :param flow:
@@ -63,7 +77,7 @@ class IAF(NF):
         base_sample = self.base.rsample(sample_shape)
         data_sample, djac = self.flow(base_sample, self.context)
         return base_sample, data_sample, djac
-    
+
     def rsample(self, sample_shape=torch.Size()):
         """Return data samples by sampling from the uniform base and transforming with the inverse rectified flow"""
         _, data_sample, _ = self.nf_rsample(sample_shape=sample_shape)
@@ -91,9 +105,13 @@ def estimate_kl(q, p):
 
 @register_conditional_parameterization(NF)
 def make_nf(inputs: dict, event_size):
-    return NF(inputs['base'], inputs['bijector'], context=inputs.get('context', None))
+    return NF(
+        inputs["base"], inputs["bijector"], context=inputs.get("context", None)
+    )
+
 
 @register_conditional_parameterization(IAF)
 def make_nf(inputs: dict, event_size):
-    return IAF(inputs['base'], inputs['bijector'], context=inputs.get('context', None))
-
+    return IAF(
+        inputs["base"], inputs["bijector"], context=inputs.get("context", None)
+    )

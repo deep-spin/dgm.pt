@@ -13,9 +13,18 @@ class RNNConditioner(Conditioner):
     Many-to-one RNN conditioner, where the output is the last output of the RNN.
     """
 
-    def __init__(self, embedding_size, hidden_size, output_size, num_layers=1,
-                 rnn_type=torch.nn.LSTM, bidirectional=True, embedding=None,
-                 vocab_size=None, padding_idx=0):
+    def __init__(
+        self,
+        embedding_size,
+        hidden_size,
+        output_size,
+        num_layers=1,
+        rnn_type=torch.nn.LSTM,
+        bidirectional=True,
+        embedding=None,
+        vocab_size=None,
+        padding_idx=0,
+    ):
         """
         :param embedding_size: Size of embeddings, not inferred if embedding is given.
         :param hidden_size: Size of RNN layers
@@ -39,13 +48,21 @@ class RNNConditioner(Conditioner):
         if embedding:
             self.embedding = embedding
         elif vocab_size:
-            self.embedding = torch.nn.Embedding(vocab_size, embedding_size,
-                                                padding_idx=padding_idx)
+            self.embedding = torch.nn.Embedding(
+                vocab_size, embedding_size, padding_idx=padding_idx
+            )
         else:
-            raise ValueError("Either an embedding should be given, or a vocab size to construct a new embedding.")
+            raise ValueError(
+                "Either an embedding should be given, or a vocab size to construct a new embedding."
+            )
 
-        self.rnn = rnn_type(embedding_size, hidden_size, num_layers=num_layers,
-                            batch_first=True, bidirectional=bidirectional)
+        self.rnn = rnn_type(
+            embedding_size,
+            hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            bidirectional=bidirectional,
+        )
 
         rnn_out_size = hidden_size * 2 if bidirectional else hidden_size
         self.fc_out = torch.nn.Linear(rnn_out_size, output_size)
@@ -56,7 +73,8 @@ class RNNConditioner(Conditioner):
 
         if isinstance(lengths, torch.LongTensor):
             out = pack_padded_sequence(
-                out, lengths, batch_first=True, enforce_sorted=False)
+                out, lengths, batch_first=True, enforce_sorted=False
+            )
 
         out, _ = self.rnn(out)
 
@@ -65,9 +83,9 @@ class RNNConditioner(Conditioner):
 
         # select last output from RNN
         if lengths is None:
-            lengths = torch.LongTensor(
-                [out.size(1)] * out.size(0)
-            ).to(out.device)
+            lengths = torch.LongTensor([out.size(1)] * out.size(0)).to(
+                out.device
+            )
         out = out[torch.arange(out.size(0), dtype=torch.long), lengths - 1]
         return self.fc_out(out)
 
@@ -91,9 +109,22 @@ class RNNLMConditioner(Conditioner):
                           reduction='none').sum(-1)
     """
 
-    def __init__(self, embedding_size, z_size, hidden_size, output_size, num_layers=1,
-                 rnn_type=torch.nn.LSTM, embedding=None, vocab_size=None, p_embedding_dropout=0., 
-                 p_word_dropout=0., unk_idx=None, padding_idx=0, z_every_step=False):
+    def __init__(
+        self,
+        embedding_size,
+        z_size,
+        hidden_size,
+        output_size,
+        num_layers=1,
+        rnn_type=torch.nn.LSTM,
+        embedding=None,
+        vocab_size=None,
+        p_embedding_dropout=0.0,
+        p_word_dropout=0.0,
+        unk_idx=None,
+        padding_idx=0,
+        z_every_step=False,
+    ):
         """
         :param embedding_size: Size of embedding.
         :param z_size: Size of latent vector RNN is conditioned on.
@@ -124,30 +155,43 @@ class RNNLMConditioner(Conditioner):
         if embedding:
             self.embedding = embedding
         elif vocab_size:
-            self.embedding = torch.nn.Embedding(vocab_size, embedding_size,
-                                                padding_idx=padding_idx)
+            self.embedding = torch.nn.Embedding(
+                vocab_size, embedding_size, padding_idx=padding_idx
+            )
         else:
-            raise ValueError("Either an embedding should be given, \
-                              or a vocab size to construct a new embedding.")
+            raise ValueError(
+                "Either an embedding should be given, \
+                              or a vocab size to construct a new embedding."
+            )
 
         self.dropout_emb = torch.nn.Dropout(p=p_embedding_dropout)
 
         if self.p_word_dropout:
             if unk_idx is None:
-                raise ValueError("When using word dropout, unk_idx should be given.")
-            self.word_dropout = WordDropout(self.p_word_dropout, unk_idx, padding_idx)
+                raise ValueError(
+                    "When using word dropout, unk_idx should be given."
+                )
+            self.word_dropout = WordDropout(
+                self.p_word_dropout, unk_idx, padding_idx
+            )
 
         if z_every_step:
             # [B, L, Z+E] -> [B, L, E]
-            self.fc_in = torch.nn.Linear(embedding_size + z_size, embedding_size)
+            self.fc_in = torch.nn.Linear(
+                embedding_size + z_size, embedding_size
+            )
 
         if self.rnn_type == torch.nn.LSTM:
             self.fc_h0 = torch.nn.Linear(z_size, hidden_size * 2)
         else:
             self.fc_h0 = torch.nn.Linear(z_size, hidden_size)
 
-        self.rnn = rnn_type(input_size=embedding_size, hidden_size=hidden_size,
-                            num_layers=num_layers, batch_first=True)
+        self.rnn = rnn_type(
+            input_size=embedding_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+        )
         self.fc_out = torch.nn.Linear(hidden_size, output_size)
 
     def _forward(self, x, z, h0=None):
@@ -198,4 +242,3 @@ class RNNLMConditioner(Conditioner):
                 outcome[:, i] = x.squeeze(-1).to(outcome.device)
 
         return outcome
-

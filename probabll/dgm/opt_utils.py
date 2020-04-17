@@ -9,20 +9,22 @@ def save_model(models: dict, optimizers: dict, output_dir: str):
     def f():
         to_save = dict()
         for k, v in models.items():
-            to_save['models.%s' % k] = v.state_dict()
+            to_save["models.%s" % k] = v.state_dict()
         for k, v in optimizers.items():
-            to_save['optimizers.%s' % k] = v.state_dict()
-        torch.save(to_save, '%s/checkpoint.pt' % output_dir)
+            to_save["optimizers.%s" % k] = v.state_dict()
+        torch.save(to_save, "%s/checkpoint.pt" % output_dir)
+
     return f
 
 
 def load_model(models: dict, optimizers: dict, output_dir: str):
     def f():
-        checkpoint = torch.load('%s/checkpoint.pt' % output_dir)
+        checkpoint = torch.load("%s/checkpoint.pt" % output_dir)
         for k, v in models.items():
-            v.load_state_dict(checkpoint['models.%s' % k])
+            v.load_state_dict(checkpoint["models.%s" % k])
         for k, v in optimizers.items():
-            v.load_state_dict(checkpoint['optimizers.%s' % k])
+            v.load_state_dict(checkpoint["optimizers.%s" % k])
+
     return f
 
 
@@ -58,7 +60,7 @@ class RequiresGradSwitch:
         self.flags = None
 
 
-def get_optimizer(name, parameters, lr, l2_weight, momentum=0.):
+def get_optimizer(name, parameters, lr, l2_weight, momentum=0.0):
     if name is None or name == "adam":
         cls = optim.Adam
     elif name == "amsgrad":
@@ -69,7 +71,7 @@ def get_optimizer(name, parameters, lr, l2_weight, momentum=0.):
         cls = optim.Adadelta
     elif name == "rmsprop":
         cls = partial(optim.RMSprop, momentum=momentum)
-    elif name == 'sgd':
+    elif name == "sgd":
         cls = optim.SGD
     else:
         raise ValueError("Unknown optimizer: %s" % name)
@@ -77,13 +79,14 @@ def get_optimizer(name, parameters, lr, l2_weight, momentum=0.):
 
 
 class ReduceLROnPlateau(torch.optim.lr_scheduler.ReduceLROnPlateau):
-    
     def __init__(self, *args, early_stopping=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.early_stopping = early_stopping
         self.early_stopping_counter = 0
-    
-    def step(self, metrics, epoch=None, callback_best=None, callback_reduce=None):
+
+    def step(
+        self, metrics, epoch=None, callback_best=None, callback_reduce=None
+    ):
         current = metrics
         if epoch is None:
             epoch = self.last_epoch = self.last_epoch + 1
@@ -101,7 +104,7 @@ class ReduceLROnPlateau(torch.optim.lr_scheduler.ReduceLROnPlateau):
 
         if self.in_cooldown:
             self.cooldown_counter -= 1
-            self.num_bad_epochs = 0 # ignore any bad epochs in cooldown
+            self.num_bad_epochs = 0  # ignore any bad epochs in cooldown
 
         if self.num_bad_epochs > self.patience:
             if callback_reduce is not None:
@@ -109,6 +112,5 @@ class ReduceLROnPlateau(torch.optim.lr_scheduler.ReduceLROnPlateau):
             self._reduce_lr(epoch)
             self.cooldown_counter = self.cooldown
             self.num_bad_epochs = 0
-            
-        return self.early_stopping_counter == self.early_stopping
 
+        return self.early_stopping_counter == self.early_stopping
